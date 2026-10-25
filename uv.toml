@@ -1,0 +1,4 @@
+# uv 包管理配置：默认使用清华 PyPI 镜像源（国内加速）
+[[index]]
+url = "https://pypi.tuna.tsinghua.edu.cn/simple"
+default = true

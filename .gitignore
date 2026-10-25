@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# 运行产物与测试数据（本地保留，不入库）
+logs/
+assets/
+label_pool/
+corpus*/
+*.mp4
+
+# 模板标注收件箱（本地工作目录，内容不入库）
+templates_raw/*
+!templates_raw/*/
+templates_raw/*/*
+!templates_raw/*/.gitkeep
+
+# IDE / 系统
+.idea/
+.vscode/
+.DS_Store

@@ -1,0 +1,4 @@
+# 打地鼠机器人运行依赖（uv.toml 已配置清华镜像源）
+opencv-python>=4.8
+numpy>=1.24
+mysc-core>=1.0.1     # scrcpy 视频流（含 adbutils / PyAV 依赖）

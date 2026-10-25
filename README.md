@@ -1,0 +1,84 @@
+# Arknights Mole Bot 🐹⚡
+
+《明日方舟》Skland「打地鼠」小游戏（"IT'S ALL ABOUT BURNING"）自动挂机脚本。
+
+实测成绩：**挑战模式 5000+ 分 / 最高连击 500+ / 服务器排名前 5**。
+
+## 架构
+
+```
+scrcpy H.264 视频流 (~25-47fps, 帧龄 21-40ms)
+  → 归一化到 2400×1080 参考系（竖屏帧自动旋转）
+  → 两级模板匹配（粗筛 0.5× 全模板 ~12ms → 仅候选类型精匹配）
+  → 白名单判定 + 洞列几何门控（无人机）
+  → 3 个常驻 adb shell 并行 input tap（多目标 ~28ms 并行落地）
+```
+
+延迟预算（端到端 ~90ms）：帧龄 ~25ms + 匹配 ~27ms + 门控/杂项 ~10ms + 设备执行 ~28ms。
+
+### 关键设计
+
+- **白名单策略**：只点击匹配到的好怪（源石虫·a/普通源石虫/西瓜/卷心菜/无人机/巨型虫），
+  冰爆（冰蓝）与异质（紫）等一切未匹配目标绝不点击——天然防误点
+- **多模板变体**：`templates/{type}*.png` 全部参与匹配取各类型最佳（实测姿势/尺寸差异鲁棒）
+- **拟人点击**：目标中心 σ=10px 正态分布抖动（限幅 ±25px）
+- **防补刀**：同位置 0.85s 冷却（死亡动画残留不再空点断连击）
+- **Boss 路径**：WARNING 全屏会盖住洞口触发页面切换，锚点分支内同样执行 giant 匹配连点
+- **无人机门控**：假阳性出现在洞间空隙，真无人机悬停在洞口列上方——按距最近洞列 <90px 过滤
+
+## 使用
+
+```bash
+# 0) 前置：手机 USB 连接（或 --serial 指定无线地址），打开游戏停在「战前整备/模式选择」页
+uv venv && uv pip install -r requirements.txt
+
+# 1) 限时模式 1 局
+uv run python bot.py
+
+# 2) 挑战模式（无尽）连打 3 局，并录制识别过程
+uv run python bot.py --mode challenge --loop 3 --record logs/demo.mp4
+
+# 参数：--mode timed|challenge  --loop N  --serial <adb地址>  --record <mp4路径>
+```
+
+运行期间自动保持屏幕常亮，Ctrl+C 或打满局数后自动退出并恢复。
+
+## 模板工作流
+
+`templates/` 内即现役模板（2400×1080 参考系原比例）：
+
+| 前缀 | 内容 |
+|---|---|
+| `mole_alpha / mole_small` | 源石虫·a(+10) / 普通源石虫(+5) |
+| `watermelon / cabbage` | 西瓜 / 卷心菜(+5) |
+| `drone` | 无人机（触发双倍积分，洞列门控） |
+| `giant` | 巨型虫/Boss（连点） |
+| `mode_timed / mode_challenge / btn_confirm / op_talulah / btn_replay` | 入场/结算 UI 锚点 |
+| `avoid_ice / avoid_purple` | 干扰物样本（存档验证用，不参与点击） |
+
+补充模板：把**整张游戏截图**（2400×1080，勿裁剪）放进 `templates_raw/<类型名>/`，
+运行内置流水线自动转正缩放并安装（详见 `scripts/`）。同类型多张变体会全部生效。
+
+## 目录
+
+```
+bot.py              # 全部逻辑（单文件：流/匹配/点击/入场/结算/录制）
+templates/          # 现役模板
+templates_raw/      # 新模板收集箱（gitignore 内容）
+scripts/            # 标注工具(label_server) / scrcpy 探针(probe_scrcpy)
+docs/game-analysis.md  # 游戏机制逆向分析（洞口坐标/怪种规则/实测数据）
+uv.toml             # 清华 PyPI 镜像
+```
+
+## 性能调优记录（踩坑记）
+
+| 方案 | 帧延迟 | 结论 |
+|---|---|---|
+| adb screencap / MaaFw 逐帧请求 | 650-1400ms | 设备端 screencap 固定开销，与传输方式无关，淘汰 |
+| **scrcpy 视频流** | **21-40ms** | 设备端持续编码，帧龄恒定 ✅ |
+| MaaTouch / scrcpy 控制通道点击 | 50-400ms 阻塞 | 队列延迟不稳，淘汰 |
+| **常驻 shell ×3 并行 input tap** | **~28ms 并行** | ✅ |
+
+## 声明
+
+仅供学习交流（计算机视觉 / Android 自动化），请勿用于任何商业用途。
